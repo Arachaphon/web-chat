@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+// เพิ่ม useEffect เข้ามาในบรรทัด import
+import { useState, useEffect } from "react";
 
 type Msg = { role: "user" | "assistant"; text: string };
 
@@ -10,15 +11,17 @@ export default function Page() {
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sessionId, setSessionId] = useState("");
 
-  const sessionId = useMemo(() => {
-    if (typeof window === "undefined") return "demo";
+  // ใช้ useEffect จัดการ sessionId เพื่อป้องกัน Error #418
+  useEffect(() => {
     const key = "session_id";
-    const existing = localStorage.getItem(key);
-    if (existing) return existing;
-    const id = crypto.randomUUID();
-    localStorage.setItem(key, id);
-    return id;
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(key, id);
+    }
+    setSessionId(id);
   }, []);
 
   async function send() {
@@ -55,12 +58,16 @@ export default function Page() {
     <main className="min-h-screen p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">MVP Web Chat (Next.js → n8n → Gemini)</h1>
 
-      <div className="border rounded p-4 h-[60vh] overflow-auto space-y-3">
+      <div className="border rounded p-4 h-[60vh] overflow-auto space-y-3 bg-white">
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-            <div className="inline-block max-w-[80%] rounded px-3 py-2 border">
-              <div className="text-xs opacity-60 mb-1">{m.role}</div>
-              <div className="whitespace-pre-wrap">{m.text}</div>
+            <div className={`inline-block max-w-[80%] rounded px-3 py-2 border ${
+              m.role === "user" ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200"
+            }`}>
+              <div className="text-xs opacity-60 mb-1 font-semibold">
+                {m.role === "user" ? "YOU" : "ASSISTANT"}
+              </div>
+              <div className="whitespace-pre-wrap text-black">{m.text}</div>
             </div>
           </div>
         ))}
@@ -68,7 +75,7 @@ export default function Page() {
 
       <div className="mt-4 flex gap-2">
         <input
-          className="flex-1 border rounded px-3 py-2"
+          className="flex-1 border rounded px-3 py-2 text-white"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
@@ -76,16 +83,17 @@ export default function Page() {
           disabled={busy}
         />
         <button
-          className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+          className="px-4 py-2 rounded bg-black text-white disabled:opacity-50 hover:bg-gray-800 transition-colors"
           onClick={send}
           disabled={busy}
         >
-          Send
+          {busy ? "Sending..." : "Send"}
         </button>
       </div>
 
-      <div className="text-sm text-gray-600 mt-2">
-        Session: {sessionId} {busy ? " | กำลังคิด..." : ""}
+      <div className="text-sm text-gray-500 mt-2 flex justify-between">
+        <span>Session: <span className="font-mono text-xs">{sessionId || "Loading..."}</span></span>
+        {busy && <span className="animate-pulse">AI กำลังพิมพ์...</span>}
       </div>
     </main>
   );
